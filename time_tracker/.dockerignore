@@ -1,5 +1,6 @@
 # Git
 .git
+.gitignore
 
 # Python
 __pycache__
@@ -43,6 +44,9 @@ data/
 *.db
 .env
 README.md
+docker-compose.yml
+Dockerfile
+.dockerignore
 
 # Logs
 logs/
