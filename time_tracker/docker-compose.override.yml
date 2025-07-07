@@ -1,0 +1,26 @@
+# Файл для переопределения настроек в режиме разработки
+# Копируется в docker-compose.override.yml для активации
+
+version: '3.8'
+
+services:
+  bot:
+    volumes:
+      - .:/app  # Монтируем весь код для разработки
+      - ./data:/app/data
+      - ./.env:/app/.env:ro
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DEBUG=1
+
+  dashboard:
+    volumes:
+      - .:/app  # Монтируем весь код для разработки
+      - ./data:/app/data
+      - ./.env:/app/.env:ro
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DEBUG=1
+    ports:
+      - "8501:8501"
+      - "8502:8502"  # Дополнительный порт для отладки 
