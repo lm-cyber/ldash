@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  # Telegram бот
+  bot:
+    build: .
+    container_name: time-tracker-bot
+    command: python -m bot.main
+    volumes:
+      - ./data:/app/data
+      - ./.env:/app/.env:ro
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    networks:
+      - time-tracker-network
+
+  # Streamlit дашборд
+  dashboard:
+    build: .
+    container_name: time-tracker-dashboard
+    command: streamlit run dashboard.py --server.port=8501 --server.address=0.0.0.0 --server.headless=true
+    ports:
+    
+      - "8501:8501"
+    volumes:
+      - ./data:/app/data
+      - ./.env:/app/.env:ro
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    depends_on:
+      - bot
+    networks:
+      - time-tracker-network
+
+networks:
+  time-tracker-network:
+    driver: bridge
+
+volumes:
+  data:
+    driver: local 
