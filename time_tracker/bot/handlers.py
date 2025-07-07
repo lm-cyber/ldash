@@ -5,7 +5,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from .states import Form
 from database.models import TimeEntry, ActivityCategory
-from database.engine import get_session, close_session
+from database.engine import get_session, close_session, force_save
 import os
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
@@ -56,7 +56,7 @@ def get_category_keyboard():
     ])
     return keyboard
 
-@router.message(Command("add"))
+@router.message(Command("a"))
 async def cmd_add(message: Message, state: FSMContext):
     """Обработчик команды /add"""
     if not is_admin(message.from_user.id):
@@ -221,7 +221,7 @@ async def process_duration(message: Message, state: FSMContext):
         return
     
     try:
-        duration = int(message.text)
+        duration = int(eval(message.text))
         if duration <= 0:
             await message.answer("Продолжительность должна быть положительным числом. Попробуйте еще раз.")
             return
@@ -246,6 +246,12 @@ async def process_duration(message: Message, state: FSMContext):
         session.add(time_entry)
         session.commit()
         
+        # Принудительно сохраняем изменения
+        force_save()
+        
+        # Закрываем сессию
+        close_session(session)
+        
         category_emoji = {
             ActivityCategory.WORK: "💼",
             ActivityCategory.STUDY: "📚",
@@ -256,7 +262,8 @@ async def process_duration(message: Message, state: FSMContext):
             f"✅ Запись добавлена!\n\n"
             f"{category_emoji[category]} Категория: {category.value.upper()}\n"
             f"📝 Задача: {activity_name}\n"
-            f"⏰ Время: {duration} минут"
+            f"⏰ Время: {duration} минут\n\n"
+            f"💾 Данные сохранены в базу"
         )
     except Exception as e:
         session.rollback()

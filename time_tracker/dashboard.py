@@ -15,7 +15,16 @@ st.set_page_config(
     layout="wide"
 )
 
-@st.cache_data
+# Автоматическое обновление каждые 30 секунд
+if 'last_refresh' not in st.session_state:
+    st.session_state.last_refresh = datetime.now()
+
+# Проверяем, нужно ли обновить данные
+if (datetime.now() - st.session_state.last_refresh).seconds > 30:
+    st.cache_data.clear()
+    st.session_state.last_refresh = datetime.now()
+
+@st.cache_data(ttl=30)  # Кэш на 30 секунд для автоматического обновления
 def load_data():
     """Загружает данные из базы данных и кэширует их"""
     session = get_session()
@@ -23,14 +32,14 @@ def load_data():
         entries = session.query(TimeEntry).all()
         data = []
         for entry in entries:
-                    data.append({
-            'id': entry.id,
-            'user_id': entry.user_id,
-            'activity_name': entry.activity_name,
-            'category': entry.category.value,
-            'duration_minutes': entry.duration_minutes,
-            'entry_date': entry.entry_date
-        })
+            data.append({
+                'id': entry.id,
+                'user_id': entry.user_id,
+                'activity_name': entry.activity_name,
+                'category': entry.category.value,
+                'duration_minutes': entry.duration_minutes,
+                'entry_date': entry.entry_date
+            })
         df = pd.DataFrame(data)
         if not df.empty and 'entry_date' in df.columns:
             df['entry_date'] = pd.to_datetime(df['entry_date'])
@@ -728,9 +737,43 @@ def show_trends_analysis(df):
 def main():
     """Основная функция дашборда"""
     st.title("📊 Дашборд учета времени")
+    
+    # Кнопка обновления данных
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        if st.button("🔄 Обновить данные", type="primary"):
+            st.cache_data.clear()
+            st.session_state.last_entry_count = 0  # Сбрасываем счетчик
+            st.rerun()
+    
+    # Показываем статус автообновления
+    with col3:
+        st.markdown(f"🔄 Автообновление: каждые 30 сек")
+    
     st.markdown("---")
     
+    # Показываем время последнего обновления и статус базы
+    st.sidebar.markdown("---")
+    st.sidebar.markdown(f"🕐 Последнее обновление: {datetime.now().strftime('%H:%M:%S')}")
+    
+    # Проверяем статус базы данных
+    try:
+        session = get_session()
+        entry_count = session.query(TimeEntry).count()
+        st.sidebar.markdown(f"💾 Записей в базе: {entry_count}")
+        close_session(session)
+    except Exception as e:
+        st.sidebar.error(f"❌ Ошибка базы данных: {e}")
+    
     df = load_data()
+    
+    # Проверяем новые записи
+    if 'last_entry_count' not in st.session_state:
+        st.session_state.last_entry_count = len(df)
+    elif len(df) > st.session_state.last_entry_count:
+        new_entries = len(df) - st.session_state.last_entry_count
+        st.success(f"🎉 Добавлено {new_entries} новых записей!")
+        st.session_state.last_entry_count = len(df)
     
     if df.empty:
         st.warning("📝 Данных пока нет. Добавьте записи через Telegram-бота.")

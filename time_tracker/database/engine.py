@@ -33,4 +33,17 @@ def get_session() -> Session:
 
 def close_session(session: Session):
     """Закрывает сессию базы данных"""
-    session.close() 
+    session.close()
+
+def force_save():
+    """Принудительно сохраняет все изменения в базу данных"""
+    session = get_session()
+    try:
+        session.commit()
+        return True
+    except Exception as e:
+        session.rollback()
+        print(f"Ошибка при сохранении: {e}")
+        return False
+    finally:
+        close_session(session) 
